@@ -8,7 +8,6 @@ global with sharing class SennaAPI {
             RestRequest request = RestContext.request;
             String requestBody = request.requestBody.toString();
 
-            // Deserializa o corpo da requisição para SennaRequest
             SennaRequest sennaRequest = (SennaRequest) JSON.deserialize(requestBody, SennaRequest.class);
 
             String action = sennaRequest.action != null ? sennaRequest.action.toLowerCase() : '';
@@ -111,13 +110,20 @@ global with sharing class SennaAPI {
         return response;
     }
 
-    private static SObject createSObject(String objectType, Map<String, Object> fields) {
-        SObject record = (SObject) Type.forName('Schema.' + objectType).newInstance();
-        for (String field : fields.keySet()) {
-            record.put(field, fields.get(field));
-        }
-        return record;
-    }
+	private static SObject createSObject(String objectType, Map<String, Object> fields) {
+    	SObject record = (SObject) Type.forName('Schema.' + objectType).newInstance();
+    	Map<String, Schema.SObjectField> fieldMap = record.getSObjectType().getDescribe().fields.getMap();
+
+    	for (String field : fields.keySet()) {
+        	Object value = fields.get(field);
+        // Verifica se o campo é uma data e converte a string para Date
+        	if (fieldMap.containsKey(field) && fieldMap.get(field).getDescribe().getType() == Schema.DisplayType.Date && value instanceOf String) {
+            	value = Date.valueOf((String) value);
+        	}	
+        	record.put(field, value);
+    	}
+    	return record;
+	}
 
     global class SennaResponse {
         public String message;
@@ -127,6 +133,6 @@ global with sharing class SennaAPI {
 
     global class SennaRequest {
         public String action;
-        public String data; // Dados em formato JSON
+        public String data;
     }
 }
